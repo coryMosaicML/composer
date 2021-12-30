@@ -26,7 +26,7 @@ schedulers:
       interval: step
   - cosine_warmrestart:
       T_0: "10ep"
-      __T_mult:
+      T_mult:
         - 2
       eta_min: 0.001
       interval: epoch
