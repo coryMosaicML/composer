@@ -67,11 +67,11 @@ def resize_inputs(X: torch.Tensor,
     X_sized = resize_tensor(X)
     if resize_targets:
         if check_for_index_targets(y):
-            y = y.unsqueeze(1)
-            y = y.float()
+            # Add a dimension to match shape of the input and change type for resizing
+            y = y.float().unsqueeze(1)
             y_sized = resize_tensor(y)
-            y = y.squeeze()
-            y = y.long()
+            # Convert back to original format for training
+            y_sized = y_sized.squeeze().long()
         else:
             y_sized = resize_tensor(y)
     else:
