@@ -15,6 +15,7 @@ from torchvision import transforms
 from composer.algorithms import AlgorithmHparams
 from composer.core import Algorithm, Event, Logger, State
 from composer.core.types import Tensor
+from composer.models.loss import check_for_index_targets
 
 log = logging.getLogger(__name__)
 
@@ -58,14 +59,21 @@ def resize_inputs(X: torch.Tensor,
             Wc = int(scale_factor * tensor.shape[3])
             resize_transform = transforms.RandomCrop((Hc, Wc))
         elif mode.lower() == "resize":
-            resize_transform = partial(F.interpolate, scale_factor=scale_factor, mode='bilinear')
+            resize_transform = partial(F.interpolate, scale_factor=scale_factor, mode='nearest')
         else:
             raise ValueError(f"Progressive mode '{mode}' not supported.")
         return resize_transform(tensor)
 
     X_sized = resize_tensor(X)
     if resize_targets:
-        y_sized = resize_tensor(y)
+        if check_for_index_targets(y):
+            y = y.unsqueeze(1)
+            y = y.float()
+            y_sized = resize_tensor(y)
+            y = y.squeeze()
+            y = y.long()
+        else:
+            y_sized = resize_tensor(y)
     else:
         y_sized = y
     return X_sized, y_sized
@@ -128,7 +136,7 @@ class ProgressiveResizing(Algorithm):
 
     def match(self, event: Event, state: State) -> bool:
         """Run on Event.AFTER_DATALOADER
-        
+
         Args:
             event (:class:`Event`): The current event.
             state (:class:`State`): The current state.
