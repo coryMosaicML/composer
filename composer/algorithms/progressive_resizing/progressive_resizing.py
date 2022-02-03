@@ -71,7 +71,7 @@ def resize_inputs(X: torch.Tensor,
             y = y.float().unsqueeze(1)
             y_sized = resize_tensor(y)
             # Convert back to original format for training
-            y_sized = y_sized.squeeze().long()
+            y_sized = y_sized.squeeze(dim=1).long()
         else:
             y_sized = resize_tensor(y)
     else:
