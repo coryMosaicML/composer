@@ -58,11 +58,13 @@ class CutOut(Algorithm):
             0. If ``0 < length < 1``, ``length`` is interpreted as a fraction
             of ``min(H, W)`` and converted to ``int(length * min(H, W))``.
             If ``length >= 1``, ``length`` is used as an integer size directly.
+        finetune_fraction: Fraction of the training to not do cutout for at the end.
     """
 
-    def __init__(self, n_holes: int = 1, length: Union[int, float] = 0.5):
+    def __init__(self, n_holes: int = 1, length: Union[int, float] = 0.5, finetune_fraction: float = 0):
         self.n_holes = n_holes
         self.length = length
+        self.finetune_fraction = finetune_fraction
 
     def match(self, event: Event, state: State) -> bool:
         """Runs on Event.AFTER_DATALOADER."""
@@ -73,8 +75,9 @@ class CutOut(Algorithm):
         x, y = state.batch_pair
         assert isinstance(x, Tensor), "Multiple tensors not supported for Cutout."
 
-        new_x = cutout_batch(X=x, n_holes=self.n_holes, length=self.length)
-        state.batch = (new_x, y)
+        if float(state.get_elapsed_duration()) < self.finetune_fraction:
+            new_x = cutout_batch(X=x, n_holes=self.n_holes, length=self.length)
+            state.batch = (new_x, y)
 
 
 def _generate_mask(mask: Tensor, width: int, height: int, x: int, y: int, cutout_length: int) -> Tensor:

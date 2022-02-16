@@ -134,6 +134,7 @@ class CutOutHparams(AlgorithmHparams):
 
     n_holes: int = hp.optional('Number of holes to cut out', default=1)
     length: float = hp.optional('Relative or absolute side length of the square hole to cut out', default=0.5)
+    finetune_fraction: float = hp.optional('Fraction of the end of training to reserve for finetuning', default=0.0)
 
     def initialize_object(self) -> CutOut:
         return CutOut(**asdict(self))
