@@ -68,7 +68,7 @@ class CutOut(Algorithm):
 
     def match(self, event: Event, state: State) -> bool:
         """Runs on Event.AFTER_DATALOADER."""
-        if float(state.get_elapsed_duration()) < self.finetune_fraction:
+        if float(state.get_elapsed_duration()) < 1 - self.finetune_fraction:
             return event == Event.AFTER_DATALOADER
         else:
             return False
