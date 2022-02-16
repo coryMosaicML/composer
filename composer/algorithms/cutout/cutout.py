@@ -68,16 +68,18 @@ class CutOut(Algorithm):
 
     def match(self, event: Event, state: State) -> bool:
         """Runs on Event.AFTER_DATALOADER."""
-        return event == Event.AFTER_DATALOADER
+        if float(state.get_elapsed_duration()) < self.finetune_fraction:
+            return event == Event.AFTER_DATALOADER
+        else:
+            return False
 
     def apply(self, event: Event, state: State, logger: Logger) -> Optional[int]:
         """Apply cutout on input images."""
         x, y = state.batch_pair
         assert isinstance(x, Tensor), "Multiple tensors not supported for Cutout."
 
-        if float(state.get_elapsed_duration()) < self.finetune_fraction:
-            new_x = cutout_batch(X=x, n_holes=self.n_holes, length=self.length)
-            state.batch = (new_x, y)
+        new_x = cutout_batch(X=x, n_holes=self.n_holes, length=self.length)
+        state.batch = (new_x, y)
 
 
 def _generate_mask(mask: Tensor, width: int, height: int, x: int, y: int, cutout_length: int) -> Tensor:
