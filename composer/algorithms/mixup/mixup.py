@@ -200,6 +200,7 @@ class MixUp(Algorithm):
             permutation_matrix[indices, self.indices] = 1
             identity_matrix = torch.eye(outputs.shape[0])
             mixing_matrix = (1 - self.mixing) * identity_matrix + self.mixing * permutation_matrix
+            mixing_matrix = mixing_matrix.to(outputs.device)
             unmixed_outputs = torch.inverse(mixing_matrix) @ outputs
             state.outputs = unmixed_outputs
 
