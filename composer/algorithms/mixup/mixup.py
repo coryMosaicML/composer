@@ -117,14 +117,17 @@ class MixUp(Algorithm):
             )
     """
 
-    def __init__(self, alpha: float = 0.2, interpolate_loss: bool = False):
+    def __init__(self, alpha: float = 0.2, interpolate_loss: bool = False, mixup_on_eval: bool = False):
         self.alpha = alpha
         self.interpolate_loss = interpolate_loss
+        self.mixup_on_eval = mixup_on_eval
         self.mixing = 0.0
         self.indices = torch.Tensor()
         self.permuted_target = torch.Tensor()
 
     def match(self, event: Event, state: State) -> bool:
+        if self.mixup_on_eval:
+            return event in [Event.EVAL_BEFORE_FORWARD, Event.EVAL_AFTER_FORWARD]
         if self.interpolate_loss:
             return event in [Event.BEFORE_FORWARD, Event.BEFORE_BACKWARD]
         else:
@@ -133,7 +136,7 @@ class MixUp(Algorithm):
     def apply(self, event: Event, state: State, logger: Logger) -> None:
         input, target = state.batch
 
-        if event == Event.BEFORE_FORWARD:
+        if event == Event.BEFORE_FORWARD or (self.mixup_on_eval and event == Event.EVAL_BEFORE_FORWARD):
             if not isinstance(input, torch.Tensor):
                 raise NotImplementedError("Multiple tensors for inputs not supported yet.")
             if not isinstance(target, torch.Tensor):
@@ -186,6 +189,19 @@ class MixUp(Algorithm):
             if not isinstance(new_loss, torch.Tensor):
                 raise NotImplementedError("Multiple losses not supported yet")
             state.loss = (1 - self.mixing) * state.loss + self.mixing * new_loss
+
+        if self.mixup_on_eval and event == Event.EVAL_AFTER_FORWARD:
+            # Unmix the outputs to make predictions.
+            if not isinstance(state.outputs, torch.Tensor):
+                raise NotImplementedError("Only implemented for single tensor outputs")
+            outputs = state.outputs  # (B, C)
+            indices = torch.arange(outputs.shape[0])
+            permutation_matrix = torch.zeros(outputs.shape[0], outputs.shape[0])
+            permutation_matrix[indices, self.indices] = 1
+            identity_matrix = torch.eye(outputs.shape[0])
+            mixing_matrix = (1 - self.mixing) * identity_matrix + self.mixing * permutation_matrix
+            unmixed_outputs = torch.inverse(mixing_matrix) @ outputs
+            state.outputs = unmixed_outputs
 
 
 def _gen_mixing_coef(alpha: float) -> float:
