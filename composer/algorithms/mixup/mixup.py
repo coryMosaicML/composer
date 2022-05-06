@@ -125,13 +125,16 @@ class MixUp(Algorithm):
         self.indices = torch.Tensor()
         self.permuted_target = torch.Tensor()
 
-    def match(self, event: Event, state: State) -> bool:
+        self.match_events = []
         if self.mixup_on_eval:
-            return event in [Event.EVAL_BEFORE_FORWARD, Event.EVAL_AFTER_FORWARD]
+            self.match_events = [Event.EVAL_BEFORE_FORWARD, Event.EVAL_AFTER_FORWARD]
         if self.interpolate_loss:
-            return event in [Event.BEFORE_FORWARD, Event.BEFORE_BACKWARD]
+            self.match_events += [Event.BEFORE_FORWARD, Event.BEFORE_BACKWARD]
         else:
-            return event in [Event.BEFORE_FORWARD, Event.BEFORE_LOSS]
+            self.match_events += [Event.BEFORE_FORWARD, Event.BEFORE_LOSS]
+
+    def match(self, event: Event, state: State) -> bool:
+        return event in self.match_events
 
     def apply(self, event: Event, state: State, logger: Logger) -> None:
         input, target = state.batch
