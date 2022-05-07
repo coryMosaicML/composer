@@ -117,10 +117,16 @@ class MixUp(Algorithm):
             )
     """
 
-    def __init__(self, alpha: float = 0.2, interpolate_loss: bool = False, mixup_on_eval: bool = False):
+    def __init__(self,
+                 alpha: float = 0.2,
+                 interpolate_loss: bool = False,
+                 mixup_on_eval: bool = False,
+                 eval_mixing=0.2):
         self.alpha = alpha
         self.interpolate_loss = interpolate_loss
         self.mixup_on_eval = mixup_on_eval
+        self.eval_mixing = eval_mixing
+
         self.mixing = 0.0
         self.indices = torch.Tensor()
         self.permuted_target = torch.Tensor()
@@ -145,7 +151,10 @@ class MixUp(Algorithm):
             if not isinstance(target, torch.Tensor):
                 raise NotImplementedError("Multiple tensors for targets not supported yet.")
 
-            self.mixing = _gen_mixing_coef(self.alpha)
+            if event == Event.EVAL_BEFORE_FORWARD:
+                self.mixing = self.eval_mixing
+            else:
+                self.mixing = _gen_mixing_coef(self.alpha)
             self.indices = _gen_indices(input.shape[0])
 
             new_input, self.permuted_target, _ = mixup_batch(

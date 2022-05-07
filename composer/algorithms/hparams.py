@@ -250,6 +250,7 @@ class MixUpHparams(AlgorithmHparams):
     interpolate_loss: bool = hp.optional('Use index labels and interpolate the loss instead of the labels.',
                                          default=False)
     mixup_on_eval: bool = hp.optional('Apply mixup during evaluation, and unmix for predictions', default=False)
+    eval_mixing: float = hp.optional('Amount of mixing to use at eval time.', default=0.2)
 
     def initialize_object(self) -> MixUp:
         return MixUp(**asdict(self))
