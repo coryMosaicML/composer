@@ -182,6 +182,10 @@ class EMA(Algorithm):
                     self.training_model = ShadowModel(state.model)
 
                 # Update the ema model
+                time = state.timestamp.get(self.update_interval.unit).value
+                self.smoothing = 2**(-(self.update_interval.value / (0.5 * time)))
+                if logger is not None:
+                    logger.data_batch({"ema/smoothing": self.smoothing})
                 compute_ema(state.model, self.ema_model, smoothing=self.smoothing)
                 if self.train_with_ema_weights:
                     # Use the ema weights for further training
