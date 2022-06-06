@@ -97,6 +97,9 @@ class ConstantSchedulerHparams(SchedulerHparams):
 
 @dataclass
 class RandomSchedulerHparams(SchedulerHparams):
+    alpha: float = hp.optional(default=1.0, doc="Learning rate multiplier to maintain while this scheduler is active.")
+    t_max: str = hp.optional(default="1dur", doc="Duration of this scheduler.")
+
     _scheduler_cls = RandomScheduler
 
 

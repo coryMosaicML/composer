@@ -300,11 +300,12 @@ class ConstantScheduler(ComposerScheduler):
 
 class RandomScheduler(ComposerScheduler):
 
-    def __init__(self) -> None:
-        pass
+    def __init__(self, alpha: float = 1.0, t_max: Union[str, Time] = "1dur") -> None:
+        self.alpha = alpha
+        self.t_max = t_max
 
     def __call__(self, state: State) -> float:
-        return random.random()
+        return self.alpha * random.random()
 
 
 class LinearScheduler(ComposerScheduler):
