@@ -14,6 +14,7 @@ See :class:`~.ComposerScheduler` for more information on stateless schedulers.
 import inspect
 import logging
 import math
+import random
 import textwrap
 import warnings
 from typing import TYPE_CHECKING, List, Union
@@ -37,7 +38,7 @@ __all__ = [
     "ComposerScheduler", "compile_composer_scheduler", "StepScheduler", "MultiStepScheduler", "ConstantScheduler",
     "LinearScheduler", "ExponentialScheduler", "CosineAnnealingScheduler", "CosineAnnealingWarmRestartsScheduler",
     "PolynomialScheduler", "MultiStepWithWarmupScheduler", "LinearWithWarmupScheduler",
-    "CosineAnnealingWithWarmupScheduler", "PolynomialWithWarmupScheduler"
+    "CosineAnnealingWithWarmupScheduler", "PolynomialWithWarmupScheduler", "RandomScheduler"
 ]
 
 
@@ -295,6 +296,15 @@ class ConstantScheduler(ComposerScheduler):
             return self.alpha
 
         return 1.0
+
+
+class RandomScheduler(ComposerScheduler):
+
+    def __init__(self) -> None:
+        pass
+
+    def __call__(self, state: State) -> float:
+        return random.random()
 
 
 class LinearScheduler(ComposerScheduler):

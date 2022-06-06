@@ -39,7 +39,7 @@ from composer.optim import (AdamHparams, AdamWHparams, ComposerScheduler, Consta
                             ExponentialSchedulerHparams, LinearSchedulerHparams, LinearWithWarmupSchedulerHparams,
                             MultiStepSchedulerHparams, MultiStepWithWarmupSchedulerHparams, OptimizerHparams,
                             PolynomialSchedulerHparams, PolynomialWithWarmupSchedulerHparams, RAdamHparams,
-                            RMSpropHparams, SchedulerHparams, SGDHparams, StepSchedulerHparams)
+                            RandomSchedulerHparams, RMSpropHparams, SchedulerHparams, SGDHparams, StepSchedulerHparams)
 from composer.profiler.profiler_hparams import ProfilerHparams
 from composer.trainer.ddp import DDPSyncStrategy
 from composer.trainer.devices import CPUDeviceHparams, DeviceHparams, GPUDeviceHparams
@@ -76,6 +76,7 @@ scheduler_registry = {
     "cosine_decay": CosineAnnealingSchedulerHparams,
     "cosine_warmrestart": CosineAnnealingWarmRestartsSchedulerHparams,
     "constant": ConstantSchedulerHparams,
+    "random": RandomSchedulerHparams,
     "polynomial": PolynomialSchedulerHparams,
     "multistep_with_warmup": MultiStepWithWarmupSchedulerHparams,
     "linear_decay_with_warmup": LinearWithWarmupSchedulerHparams,

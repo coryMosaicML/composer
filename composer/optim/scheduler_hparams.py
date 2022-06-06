@@ -13,14 +13,14 @@ from composer.optim.scheduler import (ComposerScheduler, ConstantScheduler, Cosi
                                       CosineAnnealingWarmRestartsScheduler, CosineAnnealingWithWarmupScheduler,
                                       ExponentialScheduler, LinearScheduler, LinearWithWarmupScheduler,
                                       MultiStepScheduler, MultiStepWithWarmupScheduler, PolynomialScheduler,
-                                      PolynomialWithWarmupScheduler, StepScheduler)
+                                      PolynomialWithWarmupScheduler, RandomScheduler, StepScheduler)
 
 __all__ = [
     "SchedulerHparams", "StepSchedulerHparams", "MultiStepSchedulerHparams", "ConstantSchedulerHparams",
     "LinearSchedulerHparams", "ExponentialSchedulerHparams", "CosineAnnealingSchedulerHparams",
     "CosineAnnealingWarmRestartsSchedulerHparams", "PolynomialSchedulerHparams", "MultiStepWithWarmupSchedulerHparams",
     "LinearWithWarmupSchedulerHparams", "CosineAnnealingWithWarmupSchedulerHparams",
-    "PolynomialWithWarmupSchedulerHparams"
+    "PolynomialWithWarmupSchedulerHparams", "RandomSchedulerHparams"
 ]
 
 
@@ -93,6 +93,11 @@ class ConstantSchedulerHparams(SchedulerHparams):
     t_max: str = hp.optional(default="1dur", doc="Duration of this scheduler.")
 
     _scheduler_cls = ConstantScheduler
+
+
+@dataclass
+class RandomSchedulerHparams(SchedulerHparams):
+    _scheduler_cls = RandomScheduler
 
 
 @dataclass

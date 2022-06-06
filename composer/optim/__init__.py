@@ -35,6 +35,7 @@ from composer.optim.scheduler import MultiStepScheduler as MultiStepScheduler
 from composer.optim.scheduler import MultiStepWithWarmupScheduler as MultiStepWithWarmupScheduler
 from composer.optim.scheduler import PolynomialScheduler as PolynomialScheduler
 from composer.optim.scheduler import PolynomialWithWarmupScheduler as PolynomialWithWarmupScheduler
+from composer.optim.scheduler import RandomScheduler as RandomScheduler
 from composer.optim.scheduler import StepScheduler as StepScheduler
 from composer.optim.scheduler_hparams import ConstantSchedulerHparams as ConstantSchedulerHparams
 from composer.optim.scheduler_hparams import CosineAnnealingSchedulerHparams as CosineAnnealingSchedulerHparams
@@ -50,5 +51,6 @@ from composer.optim.scheduler_hparams import MultiStepWithWarmupSchedulerHparams
 from composer.optim.scheduler_hparams import PolynomialSchedulerHparams as PolynomialSchedulerHparams
 from composer.optim.scheduler_hparams import \
     PolynomialWithWarmupSchedulerHparams as PolynomialWithWarmupSchedulerHparams
+from composer.optim.scheduler_hparams import RandomSchedulerHparams as RandomSchedulerHparams
 from composer.optim.scheduler_hparams import SchedulerHparams as SchedulerHparams
 from composer.optim.scheduler_hparams import StepSchedulerHparams as StepSchedulerHparams
