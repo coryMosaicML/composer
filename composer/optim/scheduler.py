@@ -300,8 +300,13 @@ class ConstantScheduler(ComposerScheduler):
 
 class RandomScheduler(ComposerScheduler):
 
-    def __init__(self, t_warmup: Union[str, Time], alpha: float = 1.0, t_max: Union[str, Time] = "1dur") -> None:
+    def __init__(self,
+                 t_warmup: Union[str, Time],
+                 alpha: float = 1.0,
+                 t_max: Union[str, Time] = "1dur",
+                 range: float = 1.0) -> None:
         self.alpha = alpha
+        self.range = range
         self.t_max = t_max
 
         self.t_warmup = t_warmup
@@ -312,7 +317,7 @@ class RandomScheduler(ComposerScheduler):
         if state.timestamp < t_warmup:
             return self.warmup_scheduler(state)
 
-        return self.alpha * random.random()
+        return self.alpha * (random.random() * self.range + (1.0 - self.range))
 
 
 class LinearScheduler(ComposerScheduler):

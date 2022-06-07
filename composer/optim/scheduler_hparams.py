@@ -100,6 +100,7 @@ class RandomSchedulerHparams(SchedulerHparams):
     t_warmup: str = hp.required(doc="Warmup time.")
     alpha: float = hp.optional(default=1.0, doc="Learning rate multiplier to maintain while this scheduler is active.")
     t_max: str = hp.optional(default="1dur", doc="Duration of this scheduler.")
+    range: float = hp.optional(default=1.0, doc="Range of random values to use for the learning rate.")
 
     _scheduler_cls = RandomScheduler
 
