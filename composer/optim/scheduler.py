@@ -311,6 +311,7 @@ class RandomScheduler(ComposerScheduler):
 
         self.t_warmup = t_warmup
         self.warmup_scheduler = LinearScheduler(alpha_i=0.0, alpha_f=1.0, t_max=t_warmup)
+        random.seed(0)
 
     def __call__(self, state: State) -> float:
         t_warmup = _convert_time(self.t_warmup, state)
