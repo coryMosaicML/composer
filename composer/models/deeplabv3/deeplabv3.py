@@ -19,6 +19,36 @@ from composer.models.initializers import Initializer
 __all__ = ['deeplabv3_builder', 'ComposerDeepLabV3']
 
 
+class CustomGetter(torch.nn.ModuleDict):
+    _version = 2
+    __annotations__ = {
+        'return_layers': Dict[str, str],
+    }
+
+    def __init__(self, model: torch.nn.Module, return_layers: Dict[str, str]) -> None:
+        orig_return_layers = return_layers
+        return_layers = {str(k): str(v) for k, v in return_layers.items()}
+        layers = OrderedDict()
+        for name, module in model.stages.named_children():
+            layers[name] = module
+            if name in return_layers:
+                del return_layers[name]
+            if not return_layers:
+                break
+
+        super().__init__(layers)
+        self.return_layers = orig_return_layers
+
+    def forward(self, x):
+        out = OrderedDict()
+        for name, module in self.items():
+            x = module(x)
+            if name in self.return_layers:
+                out_name = self.return_layers[name]
+                out[out_name] = x
+        return out
+
+
 class SimpleSegmentationModel(torch.nn.Module):
 
     def __init__(self, backbone, classifier):
@@ -49,7 +79,7 @@ def deeplabv3_builder(num_classes: int,
 
     Args:
         num_classes (int): Number of classes in the segmentation task.
-        backbone_arch (str, optional): The architecture to use for the backbone. Must be either [``'resnet50'``, ``'resnet101'``].
+        backbone_arch (str, optional): The architecture to use for the backbone. Must be either [``'resnet50'``, ``'resnet101'``,  ``'resnetv2_101x1_bitm_in21k'``, ``'resnetv2_101x3_bitm_in21k'``].
             Default: ``'resnet101'``.
         is_backbone_pretrained (bool, optional): If ``True``, use pretrained weights for the backbone. Default: ``True``.
         backbone_url (str, optional): Url used to download model weights. If empty, the PyTorch url will be used.
@@ -71,18 +101,31 @@ def deeplabv3_builder(num_classes: int,
     """
 
     # check that the specified architecture is in the resnet module
-    if not hasattr(resnet, backbone_arch):
-        raise ValueError(f'backbone_arch must be part of the torchvision resnet module, got value: {backbone_arch}')
+    if backbone_arch in ['resnetv2_101x1_bitm_in21k', 'resnetv2_101x3_bitm_in21k']:
+        try:
+            import timm
+        except ImportError as e:
+            raise ImportError(
+                textwrap.dedent("""\
+                Could not import timm. Please install timm with pip install timm.""")) from e
+        backbone = timm.create_model(backbone_arch, pretrained=is_backbone_pretrained)
+        # specify which layers to extract activations from
+        return_layers = {'0': 'layer1', '3': 'layer4'} if use_plus else {'3': 'layer4'}
+        backbone = CustomGetter(backbone, return_layers=return_layers)
 
-    # change the model weight url if specified
-    if backbone_url:
-        resnet.model_urls[backbone_arch] = backbone_url
-    backbone = getattr(resnet, backbone_arch)(pretrained=is_backbone_pretrained,
-                                              replace_stride_with_dilation=[False, True, True])
+    else:
+        if not hasattr(resnet, backbone_arch):
+            raise ValueError(f'backbone_arch must be part of the torchvision resnet module, got value: {backbone_arch}')
 
-    # specify which layers to extract activations from
-    return_layers = {'layer1': 'layer1', 'layer4': 'layer4'} if use_plus else {'layer4': 'layer4'}
-    backbone = _utils.IntermediateLayerGetter(backbone, return_layers=return_layers)
+        # change the model weight url if specified
+        if backbone_url:
+            resnet.model_urls[backbone_arch] = backbone_url
+        backbone = getattr(resnet, backbone_arch)(pretrained=is_backbone_pretrained,
+                                                  replace_stride_with_dilation=[False, True, True])
+
+        # specify which layers to extract activations from
+        return_layers = {'layer1': 'layer1', 'layer4': 'layer4'} if use_plus else {'layer4': 'layer4'}
+        backbone = _utils.IntermediateLayerGetter(backbone, return_layers=return_layers)
 
     try:
         from mmseg.models import ASPPHead, DepthwiseSeparableASPPHead

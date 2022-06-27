@@ -19,7 +19,7 @@ class DeepLabV3Hparams(ModelHparams):
 
     Args:
         num_classes (int): Number of classes in the segmentation task.
-        backbone_arch (str, optional): The architecture to use for the backbone. Must be either [``'resnet50'``, ``'resnet101'``].
+        backbone_arch (str, optional): The architecture to use for the backbone. Must be either [``'resnet50'``, ``'resnet101'``, ``'resnetv2_101x1_bitm_in21k'``, ``'resnetv2_101x3_bitm_in21k'``].
             Default: ``'resnet101'``.
         is_backbone_pretrained (bool, optional): If ``True``, use pretrained weights for the backbone. Default: ``True``.
         backbone_url (str, optional): Url used to download model weights. If empty, the PyTorch url will be used.
@@ -29,8 +29,9 @@ class DeepLabV3Hparams(ModelHparams):
         initializers (List[Initializer], optional): Initializers for the model. ``[]`` for no initialization. Default: ``[]``.
     """
 
-    backbone_arch: str = hp.optional("The backbone architecture to use. Must be either ['resnet50', resnet101'].",
-                                     default='resnet101')
+    backbone_arch: str = hp.optional(
+        "The backbone architecture to use. Must be either ['resnet50', resnet101', ``'resnetv2_101x1_bitm_in21k'``, ``'resnetv2_101x3_bitm_in21k'``].",
+        default='resnet101')
     is_backbone_pretrained: bool = hp.optional('If true, use pre-trained weights for backbone.', default=True)
     backbone_url: str = hp.optional(
         "Url to download model weights from. If blank (default), will download from PyTorch's url.", default='')
@@ -41,7 +42,9 @@ class DeepLabV3Hparams(ModelHparams):
         if self.num_classes is None:
             raise ValueError('num_classes must be specified')
 
-        if self.backbone_arch not in ['resnet50', 'resnet101']:
+        if self.backbone_arch not in [
+                'resnet50', 'resnet101', 'resnetv2_101x1_bitm_in21k', 'resnetv2_101x3_bitm_in21k'
+        ]:
             raise ValueError(f"backbone_arch must be one of ['resnet50', 'resnet101']: not {self.backbone_arch}")
 
     def initialize_object(self):
