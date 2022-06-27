@@ -131,6 +131,7 @@ def deeplabv3_builder(num_classes: int,
 
     # More channels for the big model
     in_channels = 6144 if backbone_arch == 'resnetv2_101x3_bitm_in21k' else 2048
+    c1_in_channels = 768 if backbone_arch == 'resnetv2_101x3_bitm_in21k' else 256
 
     try:
         from mmseg.models import ASPPHead, DepthwiseSeparableASPPHead
@@ -150,7 +151,7 @@ def deeplabv3_builder(num_classes: int,
                                           in_index=-1,
                                           channels=512,
                                           dilations=(1, 12, 24, 36),
-                                          c1_in_channels=256,
+                                          c1_in_channels=c1_in_channels,
                                           c1_channels=48,
                                           dropout_ratio=0.1,
                                           num_classes=num_classes,
