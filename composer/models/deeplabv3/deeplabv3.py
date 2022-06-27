@@ -30,6 +30,7 @@ class CustomGetter(torch.nn.ModuleDict):
         orig_return_layers = return_layers
         return_layers = {str(k): str(v) for k, v in return_layers.items()}
         layers = OrderedDict()
+        layers['stem'] = model.stem
         for name, module in model.stages.named_children():
             layers[name] = module
             if name in return_layers:
