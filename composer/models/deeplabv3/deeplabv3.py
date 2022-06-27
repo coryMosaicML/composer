@@ -129,6 +129,9 @@ def deeplabv3_builder(num_classes: int,
         return_layers = {'layer1': 'layer1', 'layer4': 'layer4'} if use_plus else {'layer4': 'layer4'}
         backbone = _utils.IntermediateLayerGetter(backbone, return_layers=return_layers)
 
+    # More channels for the big model
+    in_channels = 6144 if backbone_arch == 'resnetv2_101x3_bitm_in21k' else 2048
+
     try:
         from mmseg.models import ASPPHead, DepthwiseSeparableASPPHead
     except ImportError as e:
@@ -143,7 +146,7 @@ def deeplabv3_builder(num_classes: int,
     if use_plus:
         # mmseg config:
         # https://github.com/open-mmlab/mmsegmentation/blob/master/configs/_base_/models/deeplabv3plus_r50-d8.py
-        head = DepthwiseSeparableASPPHead(in_channels=2048,
+        head = DepthwiseSeparableASPPHead(in_channels=in_channels,
                                           in_index=-1,
                                           channels=512,
                                           dilations=(1, 12, 24, 36),
@@ -156,7 +159,7 @@ def deeplabv3_builder(num_classes: int,
     else:
         # mmseg config:
         # https://github.com/open-mmlab/mmsegmentation/blob/master/configs/_base_/models/deeplabv3_r50-d8.py
-        head = ASPPHead(in_channels=2048,
+        head = ASPPHead(in_channels=in_channels,
                         in_index=-1,
                         channels=512,
                         dilations=(1, 12, 24, 36),
