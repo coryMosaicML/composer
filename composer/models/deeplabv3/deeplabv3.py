@@ -4,7 +4,8 @@
 """DeepLabV3 model extending :class:`.ComposerClassifier`."""
 
 import textwrap
-from typing import Any, Sequence
+from collections import OrderedDict
+from typing import Any, Dict, Sequence
 
 import torch
 import torch.nn.functional as F
