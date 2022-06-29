@@ -50,9 +50,6 @@ class RandomResizePair(torch.nn.Module):
         # Adjust resize_scale such that the smallest dimension of the image is not less than 512
         resize_scale = max(resize_scale, 512 / min(base_height, base_width))
         resized_dims = (int(base_height * resize_scale), int(base_width * resize_scale))
-        resized_image = TF.resize(image, resized_dims)
-        resized_target = TF.resize(target, resized_dims, interpolation=Image.NEAREST)
-        return resized_image, resized_target
         resized_image = TF.resize(image, resized_dims, interpolation=TF.InterpolationMode.BILINEAR)  # type: ignore
         resized_target = TF.resize(target, resized_dims, interpolation=TF.InterpolationMode.NEAREST)  # type: ignore
         return resized_image, resized_target
