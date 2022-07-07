@@ -178,7 +178,7 @@ class EMA(Algorithm):
                 # Initialize the shadow models if they don't exist yet
                 if self.ema_model is None:
                     self.ema_model = ShadowModel(state.model)
-                if self.training_model is None and self.train_with_ema_weights is False:
+                if self.training_model is None:
                     self.training_model = ShadowModel(state.model)
 
                 # Update the ema model
