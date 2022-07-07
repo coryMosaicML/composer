@@ -194,18 +194,20 @@ class EMA(Algorithm):
 
         if event == Event.EVAL_START and self.ema_model is not None and self.training_model is not None:
             # Swap out the training model for the ema model in state
-            _copy_model(state.model, self.training_model)
-            _copy_model(self.ema_model, state.model)
-            self.ema_model_in_state = True
+            if self.ema_model_in_state is False:
+                _copy_model(state.model, self.training_model)
+                _copy_model(self.ema_model, state.model)
+                self.ema_model_in_state = True
 
         if event == Event.EVAL_END and self.training_model is not None:
             # Swap out the ema model for the training model in state
-            _copy_model(self.training_model, state.model)
-            self.ema_model_in_state = False
+            if self.ema_model_in_state is True:
+                _copy_model(self.training_model, state.model)
+                self.ema_model_in_state = False
 
         if event in [Event.BATCH_CHECKPOINT, Event.EPOCH_CHECKPOINT]:
             # Swap the ema model into the state for checkpointing if it exists.
-            if self.ema_model is not None:
+            if self.ema_model is not None and self.ema_model_in_state is False:
                 _copy_model(self.ema_model, state.model)
                 self.ema_model_in_state = True
 
