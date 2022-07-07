@@ -93,8 +93,6 @@ class EMA(Algorithm):
             updates are done once every ten batches. Units must match the units used to specify ``half_life``. If not
             specified, ``update_interval`` will default to ``1`` in the units of ``half_life``. Value must be an
             integer. Default: ``None``.
-        train_with_ema_weights (bool, optional): An experimental feature that uses the ema weights as the training
-            weights. In most cases should be left as ``False``. Default ``False``.
 
     Example:
         .. testcode::
@@ -111,10 +109,9 @@ class EMA(Algorithm):
             )
     """
 
-    def __init__(self, half_life: str, update_interval: Optional[str] = None, train_with_ema_weights: bool = False):
+    def __init__(self, half_life: str, update_interval: Optional[str] = None):
         self.half_life = half_life
         self.update_interval = update_interval
-        self.train_with_ema_weights = train_with_ema_weights
 
         self.ema_model = None
         self.training_model = None
@@ -194,9 +191,6 @@ class EMA(Algorithm):
 
                 # Update the ema model
                 compute_ema(state.model, self.ema_model, smoothing=self.smoothing)
-                if self.train_with_ema_weights:
-                    # Use the ema weights for further training
-                    _copy_model(self.ema_model, state.model)
 
         if event == Event.EVAL_START and self.ema_model is not None and self.training_model is not None:
             # Swap out the training model for the ema model in state

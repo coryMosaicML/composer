@@ -49,7 +49,7 @@ def test_ema_algorithm(params, minimal_state, empty_logger):
     input = torch.rand((32, 5))
 
     half_life, update_interval = params[0], params[1]
-    algorithm = EMA(half_life=half_life, update_interval=update_interval, train_with_ema_weights=False)
+    algorithm = EMA(half_life=half_life, update_interval=update_interval)
     state = minimal_state
     state.model = SimpleConvModel()
     state.batch = (input, torch.Tensor())
