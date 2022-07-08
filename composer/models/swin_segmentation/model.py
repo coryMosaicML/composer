@@ -70,6 +70,7 @@ def swin_segmentation():
         frozen_stages=-1,
         init_cfg=dict(type='Pretrained', checkpoint=checkpoint_file),
     )
+    swin_backbone.init_weights()
 
     upernet_head = UPerHead(
         in_channels=[192, 384, 768, 1536],
