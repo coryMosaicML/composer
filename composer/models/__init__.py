@@ -31,6 +31,7 @@ from composer.models.resnet_cifar import ResNetCIFARHparams as ResNetCIFARHparam
 from composer.models.resnet_cifar import composer_resnet_cifar as composer_resnet_cifar
 from composer.models.ssd import SSD as SSD
 from composer.models.ssd import SSDHparams as SSDHparams
+from composer.models.swin_segmentation import SwinSegmentationHparams as SwinSegmentationHparams
 from composer.models.tasks import ComposerClassifier as ComposerClassifier
 from composer.models.timm import TimmHparams as TimmHparams
 from composer.models.timm import composer_timm as composer_timm
