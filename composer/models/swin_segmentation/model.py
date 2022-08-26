@@ -6,7 +6,6 @@ import textwrap
 import warnings
 from typing import Sequence
 
-
 import torch
 import torch.distributed as torch_dist
 import torch.nn.functional as F
@@ -17,7 +16,6 @@ from composer.metrics import CrossEntropy, MIoU
 from composer.models.initializers import Initializer
 from composer.models.tasks import ComposerClassifier
 from composer.utils import dist
-
 
 __all__ = ['swin_segmentation', 'composer_swin_segmentation']
 
@@ -113,8 +111,7 @@ def composer_swin_segmentation():
     return composer_model
 
 
-def make_swin_large_patch4_window12_384_22k(num_classes: int,
-                                            is_pretrained: bool = True):
+def make_swin_large_patch4_window12_384_22k(num_classes: int, is_pretrained: bool = True):
     checkpoint_file = 'https://download.openmmlab.com/mmsegmentation/v0.5/pretrain/swin/swin_large_patch4_window12_384_22k_20220412-6580f57d.pth'
     swin_backbone = SwinTransformer(
         pretrain_img_size=384,
