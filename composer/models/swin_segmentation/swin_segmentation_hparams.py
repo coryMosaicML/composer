@@ -20,7 +20,7 @@ class SwinSegmentationHparams(ModelHparams):
     """
 
     config_name: str = hp.optional("The name of the mmsegmentation config to use.",
-                                    default='swin_large_patch4_window12_384_22k')
+                                   default='swin_large_patch4_window12_384_22k')
     is_pretrained: bool = hp.optional('If true (default), uses the pretrained swin weights', default=True)
     sync_bn: bool = hp.optional('If true, use SyncBatchNorm to sync batch norm statistics across GPUs.', default=True)
     ignore_index: int = hp.optional('Class label to ignore when calculating the loss and other metrics.', default=-1)
