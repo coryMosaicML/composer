@@ -3,14 +3,21 @@
 
 import functools
 import textwrap
+import warnings
+from typing import Sequence
+
 
 import torch
+import torch.distributed as torch_dist
 import torch.nn.functional as F
 from torchmetrics import MetricCollection
 
 from composer.loss import loss_registry
 from composer.metrics import CrossEntropy, MIoU
+from composer.models.initializers import Initializer
 from composer.models.tasks import ComposerClassifier
+from composer.utils import dist
+
 
 __all__ = ['swin_segmentation', 'composer_swin_segmentation']
 
@@ -34,7 +41,14 @@ class MMSegSegmentationModel(torch.nn.Module):
         return logits
 
 
-def swin_segmentation():
+def swin_segmentation(num_classes: int,
+                      config_name: str = 'swin_large_patch4_window12_384_22k',
+                      is_pretrained: bool = True,
+                      sync_bn: bool = True,
+                      ignore_index: int = -1,
+                      cross_entropy_weight: float = 1.0,
+                      dice_weight: float = 0.0,
+                      initializers: Sequence[Initializer] = ()):
     try:
         from mmseg.models import SwinTransformer, UPerHead
     except ImportError as e:
@@ -45,6 +59,62 @@ def swin_segmentation():
              {torch_version} refer to your CUDA and PyTorch versions, respectively. To install mmsegmentation, please
              run pip install mmsegmentation==0.22.0 on command-line.""")) from e
 
+    # Configs can be found at https://github.com/open-mmlab/mmsegmentation/tree/master/configs/swin
+    if config == 'swin_large_patch4_window12_384_22k':
+        model = make_swin_large_patch4_window12_384_22k(num_classes, is_pretrained)
+
+    world_size = dist.get_world_size()
+    if sync_bn and world_size == 1:
+        warnings.warn('sync_bn was true, but only one process is present for training. sync_bn will be ignored.')
+
+    # Apply initializers
+    if initializers:
+        for initializer in initializers:
+            initializer_fn = Initializer(initializer).get_initializer()
+
+            # Only apply initialization to classifier head if pre-trained weights are used
+            if is_pretrained is False:
+                model.apply(initializer_fn)
+            else:
+                model.classifier.apply(initializer_fn)
+
+    # Convert to sync batchnorm if necessary.
+    if sync_bn and world_size > 1:
+        local_world_size = dist.get_local_world_size()
+
+        # List of ranks for each node, assumes that each node has the same number of ranks
+        num_nodes = world_size // local_world_size
+        process_group = None
+        if num_nodes > 1:
+            ranks_per_node = [
+                list(range(node * local_world_size, (node + 1) * local_world_size)) for node in range(num_nodes)
+            ]
+            process_groups = [torch_dist.new_group(ranks) for ranks in ranks_per_node]
+            process_group = process_groups[dist.get_node_rank()]
+
+        model = torch.nn.SyncBatchNorm.convert_sync_batchnorm(model, process_group=process_group)
+
+    return model
+
+
+def composer_swin_segmentation():
+    model = swin_segmentation()
+
+    train_metrics = MetricCollection([CrossEntropy(ignore_index=-1), MIoU(150, ignore_index=-1)])
+    val_metrics = MetricCollection([CrossEntropy(ignore_index=-1), MIoU(150, ignore_index=-1)])
+
+    loss_fn = loss_registry['soft_cross_entropy']
+    loss_fn = functools.partial(loss_fn, ignore_index=-1)
+
+    composer_model = ComposerClassifier(module=model,
+                                        train_metrics=train_metrics,
+                                        val_metrics=val_metrics,
+                                        loss_fn=loss_fn)
+    return composer_model
+
+
+def make_swin_large_patch4_window12_384_22k(num_classes: int,
+                                            is_pretrained: bool = True):
     checkpoint_file = 'https://download.openmmlab.com/mmsegmentation/v0.5/pretrain/swin/swin_large_patch4_window12_384_22k_20220412-6580f57d.pth'
     swin_backbone = SwinTransformer(
         pretrain_img_size=384,
@@ -78,25 +148,10 @@ def swin_segmentation():
         pool_scales=(1, 2, 3, 6),
         channels=512,
         dropout_ratio=0.1,
-        num_classes=150,
-        norm_cfg=dict(type='SyncBN', requires_grad=True),  #SyncBN on GPU
+        num_classes=num_classes,
+        norm_cfg=dict(type='BN', requires_grad=True),
         align_corners=False,
     )
+
     model = MMSegSegmentationModel(swin_backbone, upernet_head)
     return model
-
-
-def composer_swin_segmentation():
-    model = swin_segmentation()
-
-    train_metrics = MetricCollection([CrossEntropy(ignore_index=-1), MIoU(150, ignore_index=-1)])
-    val_metrics = MetricCollection([CrossEntropy(ignore_index=-1), MIoU(150, ignore_index=-1)])
-
-    loss_fn = loss_registry['soft_cross_entropy']
-    loss_fn = functools.partial(loss_fn, ignore_index=-1)
-
-    composer_model = ComposerClassifier(module=model,
-                                        train_metrics=train_metrics,
-                                        val_metrics=val_metrics,
-                                        loss_fn=loss_fn)
-    return composer_model
