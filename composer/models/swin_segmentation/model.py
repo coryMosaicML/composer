@@ -104,14 +104,14 @@ def composer_swin_segmentation(num_classes: int,
     ce_loss_fn = functools.partial(soft_cross_entropy, ignore_index=ignore_index)
     dice_loss_fn = DiceLoss(softmax=True, batch=True, ignore_absent_classes=True)
 
-    def _combo_loss(output, target):
-        loss = {}
+    def _combo_loss(output, target) -> Dict[str, torch.Tensor]:
+        loss = {'total': torch.zeros(1, device=output.device, dtype=output.dtype)}
         if cross_entropy_weight:
-            ce_loss = ce_loss_fn(output, target) * cross_entropy_weight
-            loss['cross_entropy_loss'] = ce_loss
+            loss['cross_entropy'] = ce_loss_fn(output, target)
+            loss['total'] += loss['cross_entropy'] * cross_entropy_weight
         if dice_weight:
-            dice_loss = dice_loss_fn(output, target) * dice_weight
-            loss['dice_loss'] = dice_loss
+            loss['dice'] = dice_loss_fn(output, target)
+            loss['total'] += loss['dice'] * dice_weight
         return loss
 
     composer_model = ComposerClassifier(module=model,
