@@ -55,7 +55,7 @@ def swin_segmentation(num_classes: int,
              run pip install mmsegmentation==0.22.0 on command-line.""")) from e
 
     # Configs can be found at https://github.com/open-mmlab/mmsegmentation/tree/master/configs/swin
-    if config == 'swin_large_patch4_window12_384_22k':
+    if config_name == 'swin_large_patch4_window12_384_22k':
         model = make_swin_large_patch4_window12_384_22k(num_classes, is_pretrained)
 
     world_size = dist.get_world_size()
