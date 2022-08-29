@@ -44,15 +44,6 @@ def swin_segmentation(num_classes: int,
                       is_pretrained: bool = True,
                       sync_bn: bool = True,
                       initializers: Sequence[Initializer] = ()):
-    try:
-        from mmseg.models import SwinTransformer, UPerHead
-    except ImportError as e:
-        raise ImportError(
-            textwrap.dedent("""\
-            Either mmcv or mmsegmentation is not installed. To install mmcv, please run pip install mmcv-full==1.4.4 -f
-             https://download.openmmlab.com/mmcv/dist/{cu_version}/{torch_version}/index.html where {cu_version} and
-             {torch_version} refer to your CUDA and PyTorch versions, respectively. To install mmsegmentation, please
-             run pip install mmsegmentation==0.22.0 on command-line.""")) from e
 
     # Configs can be found at https://github.com/open-mmlab/mmsegmentation/tree/master/configs/swin
     if config_name == 'swin_large_patch4_window12_384_22k':
@@ -130,6 +121,16 @@ def composer_swin_segmentation(num_classes: int,
 
 
 def make_swin_large_patch4_window12_384_22k(num_classes: int, is_pretrained: bool = True):
+    try:
+        from mmseg.models import SwinTransformer, UPerHead
+    except ImportError as e:
+        raise ImportError(
+            textwrap.dedent("""\
+            Either mmcv or mmsegmentation is not installed. To install mmcv, please run pip install mmcv-full==1.4.4 -f
+             https://download.openmmlab.com/mmcv/dist/{cu_version}/{torch_version}/index.html where {cu_version} and
+             {torch_version} refer to your CUDA and PyTorch versions, respectively. To install mmsegmentation, please
+             run pip install mmsegmentation==0.22.0 on command-line.""")) from e
+
     checkpoint_file = 'https://download.openmmlab.com/mmsegmentation/v0.5/pretrain/swin/swin_large_patch4_window12_384_22k_20220412-6580f57d.pth'
     swin_backbone = SwinTransformer(
         pretrain_img_size=384,
