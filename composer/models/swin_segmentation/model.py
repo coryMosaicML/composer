@@ -4,7 +4,7 @@
 import functools
 import textwrap
 import warnings
-from typing import Sequence
+from typing import Dict, Sequence
 
 import torch
 import torch.distributed as torch_dist
