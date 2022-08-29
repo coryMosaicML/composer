@@ -11,6 +11,7 @@ import torch.distributed as torch_dist
 import torch.nn.functional as F
 from torchmetrics import MetricCollection
 
+from composer.loss import DiceLoss, soft_cross_entropy
 from composer.loss import loss_registry
 from composer.metrics import CrossEntropy, MIoU
 from composer.models.initializers import Initializer
