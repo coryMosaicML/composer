@@ -2,6 +2,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 from dataclasses import dataclass
+from distutils.command.config import config
 
 import yahp as hp
 
@@ -48,4 +49,10 @@ class SwinSegmentationHparams(ModelHparams):
         if self.num_classes is None:
             raise ValueError('num_classes must be specified')
 
-        return composer_swin_segmentation(num_classes=self.num_classes)
+        return composer_swin_segmentation(num_classes=self.num_classes,
+                                          config_name=self.config_name,
+                                          is_pretrained=self.is_pretrained,
+                                          sync_bn=self.sync_bn,
+                                          ignore_index=self.ignore_index,
+                                          cross_entropy_weight=self.cross_entropy_weight,
+                                          dice_weight=self.dice_weight)
