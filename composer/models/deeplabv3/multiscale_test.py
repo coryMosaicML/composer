@@ -11,7 +11,30 @@ from composer.models import composer_deeplabv3
 from composer.trainer import Trainer
 from composer.metrics import CrossEntropy, MIoU
 
-miou_metric = MIoU(num_classes=150)
+ss_miou_metric = MIoU(num_classes=150)
+ms_miou_metric = MIoU(num_classes=150)
+ms_flips_miou_metric = MIoU(num_classes=150)
+
+class PixelAccuracy:
+    def __init__(self):
+        self.corr_pixels = 0
+        self.total_pixels = 0
+
+    def update(self, output, target):
+        predicted = output.argmax(dim=1)
+        matched = (predicted == target)
+        mask = torch.zeros_like(target)
+        mask[target >= 0] = 1
+
+        self.corr_pixels += torch.sum(matched)
+        self.total_pixels += torch.sum(mask)
+
+    def compute(self):
+        return 100 * self.corr_pixels / self.total_pixels
+
+ss_pacc_metric = PixelAccuracy()
+ms_pacc_metric = PixelAccuracy()
+ms_flips_pacc_metric = PixelAccuracy()
 
 MEAN = (0.485 * 255, 0.456 * 255, 0.406 * 255)
 STD = (0.229 * 255, 0.224 * 255, 0.225 * 255)
@@ -31,23 +54,28 @@ multisizes = [resize_256_img, resize_384_img, resize_640_img, resize_768_img, re
 # [0.5, 0.75, 1.0, 1.25, 1.5, 1.75]
 def multiscale_test(model, image):
     outputs = model((image, None))
+    ss_outputs = torch.clone(outputs)
+    ms_outputs = torch.clone(outputs)
+    ms_flips_outputs = torch.clone(outputs)
+
     flipped_image = torchvision.transforms.functional.hflip(image)
     flipped_outputs = model((flipped_image, None))
     flipped_outputs = torchvision.transforms.functional.hflip(flipped_outputs)
-    outputs += flipped_outputs
+    ms_flips_outputs += flipped_outputs
 
     for size in multisizes:
         sized_image = size(image)
         sized_outputs = model((sized_image, None))
         sized_outputs = resize_512_out(sized_outputs)
-        outputs += sized_outputs
+        ms_outputs += sized_outputs
+        ms_flips_outputs += sized_outputs
 
         flipped_sized_image = torchvision.transforms.functional.hflip(sized_image)
         flipped_sized_outputs = model((flipped_sized_image, None))
         flipped_sized_outputs = resize_512_out(flipped_sized_outputs)
         flipped_sized_outputs = torchvision.transforms.functional.hflip(flipped_sized_outputs)
-        outputs += flipped_sized_outputs
-    return outputs
+        ms_flips_outputs += flipped_sized_outputs
+    return ss_outputs, ms_outputs, ms_flips_outputs
 
 
 model = composer_deeplabv3(num_classes=150,
@@ -58,7 +86,10 @@ model = composer_deeplabv3(num_classes=150,
                            cross_entropy_weight=0.375,
                            dice_weight=1.125)
 
-state_dict = torch.load("/root/data/dice-ep128-ba20096-rank0")
+# Baseline dice checkpoint
+#state_dict = torch.load("/root/data/dice-ep128-ba20096-rank0")
+# Broken ema+sam+mx ssr 1 checkpoint
+state_dict = torch.load("/root/data/broken-ema-mx-sam-ep128-ba20096-rank0")
 model.load_state_dict(state_dict["state"]["model"])
 
 model = model.cuda()
@@ -66,9 +97,6 @@ model = model.eval()
 
 val_dir = '/root/data/inference_data/val-images/'
 ann_dir = '/root/data/inference_data/val-annotations/'
-
-corr_pixels = 0
-total_pixels = 0
 
 with torch.no_grad():
     for filename in tqdm(os.listdir(val_dir)):
@@ -95,19 +123,22 @@ with torch.no_grad():
         # Run the image through the network
         #output = model.forward((image, None))
         # Run the multiscale testing
-        output = multiscale_test(model, image)
+        ss_output, ms_output, ms_flips_output = multiscale_test(model, image)
 
-        # Compute MIoU
-        miou_metric.update(output.cpu(), target.cpu())
-        print("miou:", miou_metric.compute().item())
+        # Update MIoU
+        ss_miou_metric.update(ss_output.cpu(), target.cpu())
+        ms_miou_metric.update(ms_output.cpu(), target.cpu())
+        ms_flips_miou_metric.update(ms_flips_output.cpu(), target.cpu())
 
-        # Compute pixel accuracy
-        predicted = output.argmax(dim=1)
-        matched = (predicted == target)
-        mask = torch.zeros_like(target)
-        mask[target >= 0] = 1
+        # Update pixel accuracy
+        ss_pacc_metric.update(ss_output.cpu(), target.cpu())
+        ms_pacc_metric.update(ms_output.cpu(), target.cpu())
+        ms_flips_pacc_metric.update(ms_flips_output.cpu(), target.cpu())
 
-        corr_pixels += torch.sum(matched)
-        total_pixels += torch.sum(mask)
-        acc = corr_pixels / total_pixels
-        print("accuracy:", acc.item())
+        print("ss MIoU: {:.2f}, ms MIoU {:.2f} ms+flips MIoU {:.2f}".format(ss_miou_metric.compute().item(),
+                                                                ms_miou_metric.compute().item(),
+                                                                ms_flips_miou_metric.compute().item()))
+
+        print("ss PAcc: {:.2f}, ms PAcc {:.2f} ms+flips PAcc {:.2f}".format(ss_pacc_metric.compute().item(),
+                                                                ms_pacc_metric.compute().item(),
+                                                                ms_flips_pacc_metric.compute().item()))
