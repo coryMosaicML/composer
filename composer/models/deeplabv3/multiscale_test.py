@@ -16,7 +16,8 @@ miou_metric = MIoU(num_classes=150)
 MEAN = (0.485 * 255, 0.456 * 255, 0.406 * 255)
 STD = (0.229 * 255, 0.224 * 255, 0.225 * 255)
 normalize = torchvision.transforms.Normalize(MEAN, STD)
-resize_512 = torchvision.transforms.Resize(size=(512, 512), interpolation=TF.InterpolationMode.BILINEAR)
+resize_512_img = torchvision.transforms.Resize(size=(512, 512), interpolation=TF.InterpolationMode.BILINEAR)
+resize_512_ann = torchvision.transforms.Resize(size=(512, 512), interpolation=TF.InterpolationMode.NEAREST)
 
 
 model = composer_deeplabv3(num_classes=150,
@@ -56,9 +57,9 @@ for filename in os.listdir(val_dir):
     target = target.unsqueeze(0) - 1
 
     # Prep image and target for eval
+    image = resize_512_img(image)
+    target = resize_512_ann(target)
     image = normalize(image)
-    image = resize_512(image)
-    target = resize_512(target)
 
     # Run the image through the network
     output = model.forward((image, None))
