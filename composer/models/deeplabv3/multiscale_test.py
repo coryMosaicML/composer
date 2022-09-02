@@ -31,11 +31,22 @@ multisizes = [resize_256_img, resize_384_img, resize_640_img, resize_768_img, re
 # [0.5, 0.75, 1.0, 1.25, 1.5, 1.75]
 def multiscale_test(model, image):
     outputs = model((image, None))
+    flipped_image = torchvision.transforms.functional.hflip(image)
+    flipped_outputs = model((flipped_image, None))
+    flipped_outputs = torchvision.transforms.functional.hflip(flipped_outputs)
+    outputs += flipped_outputs
+
     for size in multisizes:
         sized_image = size(image)
         sized_outputs = model((sized_image, None))
         sized_outputs = resize_512_out(sized_outputs)
         outputs += sized_outputs
+
+        flipped_sized_image = torchvision.transforms.functional.hflip(sized_image)
+        flipped_sized_outputs = model((flipped_sized_image, None))
+        flipped_sized_outputs = resize_512_out(flipped_sized_outputs)
+        flipped_sized_outputs = torchvision.transforms.functional.hflip(flipped_sized_outputs)
+        outputs += flipped_sized_outputs
     return outputs
 
 
@@ -53,8 +64,8 @@ model.load_state_dict(state_dict["state"]["model"])
 model = model.cuda()
 model = model.eval()
 
-val_dir = '/root/data/val-images/'
-ann_dir = '/root/data/val-annotations/'
+val_dir = '/root/data/inference_data/val-images/'
+ann_dir = '/root/data/inference_data/val-annotations/'
 
 corr_pixels = 0
 total_pixels = 0
