@@ -5,11 +5,11 @@ import numpy as np
 import torch
 import torchvision
 import torchvision.transforms.functional as TF
+from tqdm import tqdm
 
 from composer.models import composer_deeplabv3
 from composer.trainer import Trainer
 from composer.metrics import CrossEntropy, MIoU
-import timeit
 
 miou_metric = MIoU(num_classes=150)
 
@@ -34,7 +34,7 @@ def multiscale_test(model, image):
     for size in multisizes:
         sized_image = size(image)
         sized_outputs = model((sized_image, None))
-        sized_outputs = resize_512_out(outputs)
+        sized_outputs = resize_512_out(sized_outputs)
         outputs += sized_outputs
     return outputs
 
@@ -59,43 +59,44 @@ ann_dir = '/root/data/val-annotations/'
 corr_pixels = 0
 total_pixels = 0
 
-for filename in os.listdir(val_dir):
-    img_path = os.path.join(val_dir, filename)
-    ann_path = os.path.join(ann_dir, filename.replace('.jpg', '.png'))
-    # open an image
-    image = Image.open(img_path)
-    image = np.array(image)
-    image = torch.from_numpy(image)
-    image = image.permute(2, 0, 1)
-    image = image.unsqueeze(dim=0).float().cuda()
+with torch.no_grad():
+    for filename in tqdm(os.listdir(val_dir)):
+        img_path = os.path.join(val_dir, filename)
+        ann_path = os.path.join(ann_dir, filename.replace('.jpg', '.png'))
+        # open an image
+        image = Image.open(img_path)
+        image = np.array(image)
+        image = torch.from_numpy(image)
+        image = image.permute(2, 0, 1)
+        image = image.unsqueeze(dim=0).float().cuda()
 
-    # open the annotations
-    target = Image.open(ann_path)
-    target = np.array(target)
-    target = torch.from_numpy(target).cuda()
-    target = target.unsqueeze(0) - 1
+        # open the annotations
+        target = Image.open(ann_path)
+        target = np.array(target)
+        target = torch.from_numpy(target).cuda()
+        target = target.unsqueeze(0) - 1
 
-    # Prep image and target for eval
-    image = resize_512_img(image)
-    target = resize_512_ann(target)
-    image = normalize(image)
+        # Prep image and target for eval
+        image = resize_512_img(image)
+        target = resize_512_ann(target)
+        image = normalize(image)
 
-    # Run the image through the network
-    #output = model.forward((image, None))
-    # Run the multiscale testing
-    output = multiscale_test(model, image)
+        # Run the image through the network
+        #output = model.forward((image, None))
+        # Run the multiscale testing
+        output = multiscale_test(model, image)
 
-    # Compute MIoU
-    miou_metric.update(output.cpu(), target.cpu())
-    print("miou:", miou_metric.compute().item())
+        # Compute MIoU
+        miou_metric.update(output.cpu(), target.cpu())
+        print("miou:", miou_metric.compute().item())
 
-    # Compute pixel accuracy
-    predicted = output.argmax(dim=1)
-    matched = (predicted == target)
-    mask = torch.zeros_like(target)
-    mask[target >= 0] = 1
+        # Compute pixel accuracy
+        predicted = output.argmax(dim=1)
+        matched = (predicted == target)
+        mask = torch.zeros_like(target)
+        mask[target >= 0] = 1
 
-    corr_pixels += torch.sum(matched)
-    total_pixels += torch.sum(mask)
-    acc = corr_pixels / total_pixels
-    print("accuracy:", acc.item())
+        corr_pixels += torch.sum(matched)
+        total_pixels += torch.sum(mask)
+        acc = corr_pixels / total_pixels
+        print("accuracy:", acc.item())
