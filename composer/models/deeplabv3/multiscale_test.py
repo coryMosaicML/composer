@@ -52,26 +52,31 @@ resize_512_out = torchvision.transforms.Resize(size=(512, 512), interpolation=TF
 multisizes = [resize_256_img, resize_384_img, resize_640_img, resize_768_img, resize_896_img]
 
 # [0.5, 0.75, 1.0, 1.25, 1.5, 1.75]
+def get_output(model, image):
+    output = model((image, None))
+    output = torch.nn.functional.softmax(output, dim=1)
+    return output
+
 def multiscale_test(model, image):
-    outputs = model((image, None))
+    outputs = get_output(model, image)
     ss_outputs = torch.clone(outputs)
     ms_outputs = torch.clone(outputs)
     ms_flips_outputs = torch.clone(outputs)
 
     flipped_image = torchvision.transforms.functional.hflip(image)
-    flipped_outputs = model((flipped_image, None))
+    flipped_outputs = get_output(model, flipped_image)
     flipped_outputs = torchvision.transforms.functional.hflip(flipped_outputs)
     ms_flips_outputs += flipped_outputs
 
     for size in multisizes:
         sized_image = size(image)
-        sized_outputs = model((sized_image, None))
+        sized_outputs = get_output(model, sized_image)
         sized_outputs = resize_512_out(sized_outputs)
         ms_outputs += sized_outputs
         ms_flips_outputs += sized_outputs
 
         flipped_sized_image = torchvision.transforms.functional.hflip(sized_image)
-        flipped_sized_outputs = model((flipped_sized_image, None))
+        flipped_sized_outputs = get_output(model, flipped_sized_image)
         flipped_sized_outputs = resize_512_out(flipped_sized_outputs)
         flipped_sized_outputs = torchvision.transforms.functional.hflip(flipped_sized_outputs)
         ms_flips_outputs += flipped_sized_outputs
@@ -90,6 +95,8 @@ model = composer_deeplabv3(num_classes=150,
 #state_dict = torch.load("/root/data/dice-ep128-ba20096-rank0")
 # Broken ema+sam+mx ssr 1 checkpoint
 state_dict = torch.load("/root/data/broken-ema-mx-sam-ep128-ba20096-rank0")
+# xent baseline checkpoint
+#state_dict = torch.load("/root/data/xent-ep128-ba20096-rank0")
 model.load_state_dict(state_dict["state"]["model"])
 
 model = model.cuda()
