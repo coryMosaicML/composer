@@ -1,3 +1,4 @@
+import argparse
 import os
 from PIL import Image
 from io import BytesIO
@@ -10,6 +11,14 @@ from tqdm import tqdm
 from composer.models import composer_deeplabv3
 from composer.trainer import Trainer
 from composer.metrics import CrossEntropy, MIoU
+
+parser = argparse.ArgumentParser(description='Testing script for deeplabV3+')
+parser.add_argument('-c','--checkpoint', help='Path to the checkpoint to evaluate', required=True)
+parser.add_argument('-i','--images', help='Path to the images to evaluate on', required=True)
+parser.add_argument('-a','--annotations', help='Path to the image annotations to evaluate on', required=False, default=None)
+parser.add_argument('-s','--save_dir', help='Place to save generated outputs', required=False, default=None)
+args = parser.parse_args()
+
 
 ss_miou_metric = MIoU(num_classes=150)
 ms_miou_metric = MIoU(num_classes=150)
@@ -52,6 +61,52 @@ resize_512_out = torchvision.transforms.Resize(size=(512, 512), interpolation=TF
 multisizes = [resize_256_img, resize_384_img, resize_640_img, resize_768_img, resize_896_img]
 
 # [0.5, 0.75, 1.0, 1.25, 1.5, 1.75]
+def load_images(images_path, annotations_path):
+    images = []
+    for filename in tqdm(os.listdir(images_path)):
+        img_path = os.path.join(images_path, filename)
+
+        # open an image
+        pil_image = Image.open(img_path)
+        image = np.array(pil_image)
+        if image.ndim == 3:
+            # Image is rgb, everythings fine
+            image = torch.from_numpy(image)
+            image = image.permute(2, 0, 1)
+        elif image.ndim == 2:
+            # Convert greyscale image to rgb
+            rgbimg = Image.new("RGB", pil_image.size)
+            rgbimg.paste(pil_image)
+            image = np.array(rgbimg)
+            image = torch.from_numpy(image)
+            print(filename, image.shape)
+            image = image.permute(2, 0, 1)
+        else:
+            raise ValueError(f'Uh oh! Something wrong with {filename} of shape {image.shape}')
+
+        image = image.unsqueeze(dim=0).float().cuda()
+        # Make the resize transform back to original resolution
+        resize_original = torchvision.transforms.Resize(size=(image.shape[-2], image.shape[-1]), interpolation=TF.InterpolationMode.BILINEAR)
+
+        # Prep image for eval
+        image = resize_512_img(image)
+        image = normalize(image)
+
+        # open the annotations if specified
+        if annotations_path is not None:
+            ann_path = os.path.join(annotations_path, filename.replace('.jpg', '.png'))
+            target = Image.open(ann_path)
+            target = np.array(target)
+            target = torch.from_numpy(target).cuda()
+            target = target.unsqueeze(0) - 1
+            # Prep for eval
+            target = resize_512_ann(target)
+        else:
+            target = None
+        images.append((image, target, resize_original, filename))
+
+    return images
+
 def get_output(model, image):
     output = model((image, None))
     output = torch.nn.functional.softmax(output, dim=1)
@@ -91,61 +146,46 @@ model = composer_deeplabv3(num_classes=150,
                            cross_entropy_weight=0.375,
                            dice_weight=1.125)
 
-# Baseline dice checkpoint
-#state_dict = torch.load("/root/data/dice-ep128-ba20096-rank0")
-# Broken ema+sam+mx ssr 1 checkpoint
-state_dict = torch.load("/root/data/broken-ema-mx-sam-ep128-ba20096-rank0")
-# xent baseline checkpoint
-#state_dict = torch.load("/root/data/xent-ep128-ba20096-rank0")
+# Load a checkpoint
+state_dict = torch.load(args.checkpoint)
 model.load_state_dict(state_dict["state"]["model"])
 
 model = model.cuda()
 model = model.eval()
 
-val_dir = '/root/data/inference_data/val-images/'
-ann_dir = '/root/data/inference_data/val-annotations/'
+images = load_images(args.images, args.annotations)
 
 with torch.no_grad():
-    for filename in tqdm(os.listdir(val_dir)):
-        img_path = os.path.join(val_dir, filename)
-        ann_path = os.path.join(ann_dir, filename.replace('.jpg', '.png'))
-        # open an image
-        image = Image.open(img_path)
-        image = np.array(image)
-        image = torch.from_numpy(image)
-        image = image.permute(2, 0, 1)
-        image = image.unsqueeze(dim=0).float().cuda()
-
-        # open the annotations
-        target = Image.open(ann_path)
-        target = np.array(target)
-        target = torch.from_numpy(target).cuda()
-        target = target.unsqueeze(0) - 1
-
-        # Prep image and target for eval
-        image = resize_512_img(image)
-        target = resize_512_ann(target)
-        image = normalize(image)
-
-        # Run the image through the network
-        #output = model.forward((image, None))
+    for image, target, resize_original, filename in tqdm(images):
         # Run the multiscale testing
         ss_output, ms_output, ms_flips_output = multiscale_test(model, image)
 
-        # Update MIoU
-        ss_miou_metric.update(ss_output.cpu(), target.cpu())
-        ms_miou_metric.update(ms_output.cpu(), target.cpu())
-        ms_flips_miou_metric.update(ms_flips_output.cpu(), target.cpu())
+        if target is not None:
+            # Update MIoU
+            ss_miou_metric.update(ss_output.cpu(), target.cpu())
+            ms_miou_metric.update(ms_output.cpu(), target.cpu())
+            ms_flips_miou_metric.update(ms_flips_output.cpu(), target.cpu())
 
-        # Update pixel accuracy
-        ss_pacc_metric.update(ss_output.cpu(), target.cpu())
-        ms_pacc_metric.update(ms_output.cpu(), target.cpu())
-        ms_flips_pacc_metric.update(ms_flips_output.cpu(), target.cpu())
+            # Update pixel accuracy
+            ss_pacc_metric.update(ss_output.cpu(), target.cpu())
+            ms_pacc_metric.update(ms_output.cpu(), target.cpu())
+            ms_flips_pacc_metric.update(ms_flips_output.cpu(), target.cpu())
 
-        print("ss MIoU: {:.2f}, ms MIoU {:.2f} ms+flips MIoU {:.2f}".format(ss_miou_metric.compute().item(),
-                                                                ms_miou_metric.compute().item(),
-                                                                ms_flips_miou_metric.compute().item()))
+            print("ss MIoU: {:.2f}, ms MIoU {:.2f} ms+flips MIoU {:.2f}".format(ss_miou_metric.compute().item(),
+                                                                    ms_miou_metric.compute().item(),
+                                                                    ms_flips_miou_metric.compute().item()))
 
-        print("ss PAcc: {:.2f}, ms PAcc {:.2f} ms+flips PAcc {:.2f}".format(ss_pacc_metric.compute().item(),
-                                                                ms_pacc_metric.compute().item(),
-                                                                ms_flips_pacc_metric.compute().item()))
+            print("ss PAcc: {:.2f}, ms PAcc {:.2f} ms+flips PAcc {:.2f}".format(ss_pacc_metric.compute().item(),
+                                                                    ms_pacc_metric.compute().item(),
+                                                                    ms_flips_pacc_metric.compute().item()))
+
+        if args.save_dir is not None:
+            # Resize the multiscale+flips output to original size
+            resized_output = resize_original(ms_flips_output)
+            # Create the segmentation output
+            segmentation_output = torch.argmax(resized_output, dim=1).squeeze()
+            segmentation_output = segmentation_output.data.cpu().numpy()
+            # Convert to an image and save
+            segmentation_image = Image.fromarray(np.uint8(segmentation_output))
+            output_name = filename.replace('.jpg', '.png')
+            segmentation_image.save(os.path.join(args.save_dir, output_name))
