@@ -185,7 +185,13 @@ with torch.no_grad():
             # Create the segmentation output
             segmentation_output = torch.argmax(resized_output, dim=1).squeeze()
             segmentation_output = segmentation_output.data.cpu().numpy()
+            # Increment the output by 1 to include the background class
+            segmentation_output = segmentation_output + 1
             # Convert to an image and save
             segmentation_image = Image.fromarray(np.uint8(segmentation_output))
             output_name = filename.replace('.jpg', '.png')
             segmentation_image.save(os.path.join(args.save_dir, output_name))
+            # Reopen the image and verify you get the same array
+            reopened_image = Image.open(os.path.join(args.save_dir, output_name))
+            reopened_image = np.array(reopened_image)
+            np.testing.assert_allclose(segmentation_image, reopened_image)
