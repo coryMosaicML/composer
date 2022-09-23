@@ -2,11 +2,13 @@ import argparse
 import os
 from PIL import Image
 from io import BytesIO
+import imageio
 import numpy as np
 import torch
 import torchvision
 import torchvision.transforms.functional as TF
 from tqdm import tqdm
+
 
 from composer.models import composer_deeplabv3
 from composer.trainer import Trainer
@@ -17,6 +19,7 @@ parser.add_argument('-c','--checkpoint', help='Path to the checkpoint to evaluat
 parser.add_argument('-i','--images', help='Path to the images to evaluate on', required=True)
 parser.add_argument('-a','--annotations', help='Path to the image annotations to evaluate on', required=False, default=None)
 parser.add_argument('-s','--save_dir', help='Place to save generated outputs', required=False, default=None)
+parser.add_argument('--antialias', help='Use antialiasing for resizing', action='store_true')
 args = parser.parse_args()
 
 
@@ -48,16 +51,16 @@ ms_flips_pacc_metric = PixelAccuracy()
 MEAN = (0.485 * 255, 0.456 * 255, 0.406 * 255)
 STD = (0.229 * 255, 0.224 * 255, 0.225 * 255)
 normalize = torchvision.transforms.Normalize(MEAN, STD)
-resize_512_img = torchvision.transforms.Resize(size=(512, 512), interpolation=TF.InterpolationMode.BILINEAR)
+resize_512_img = torchvision.transforms.Resize(size=(512, 512), interpolation=TF.InterpolationMode.BILINEAR, antialias=args.antialias)
 resize_512_ann = torchvision.transforms.Resize(size=(512, 512), interpolation=TF.InterpolationMode.NEAREST)
 
-resize_256_img = torchvision.transforms.Resize(size=(256, 256), interpolation=TF.InterpolationMode.BILINEAR)
-resize_384_img = torchvision.transforms.Resize(size=(384, 384), interpolation=TF.InterpolationMode.BILINEAR)
-resize_640_img = torchvision.transforms.Resize(size=(640, 640), interpolation=TF.InterpolationMode.BILINEAR)
-resize_768_img = torchvision.transforms.Resize(size=(768, 768), interpolation=TF.InterpolationMode.BILINEAR)
-resize_896_img = torchvision.transforms.Resize(size=(896, 896), interpolation=TF.InterpolationMode.BILINEAR)
+resize_256_img = torchvision.transforms.Resize(size=(256, 256), interpolation=TF.InterpolationMode.BILINEAR, antialias=args.antialias)
+resize_384_img = torchvision.transforms.Resize(size=(384, 384), interpolation=TF.InterpolationMode.BILINEAR, antialias=args.antialias)
+resize_640_img = torchvision.transforms.Resize(size=(640, 640), interpolation=TF.InterpolationMode.BILINEAR, antialias=args.antialias)
+resize_768_img = torchvision.transforms.Resize(size=(768, 768), interpolation=TF.InterpolationMode.BILINEAR, antialias=args.antialias)
+resize_896_img = torchvision.transforms.Resize(size=(896, 896), interpolation=TF.InterpolationMode.BILINEAR, antialias=args.antialias)
 
-resize_512_out = torchvision.transforms.Resize(size=(512, 512), interpolation=TF.InterpolationMode.BILINEAR)
+resize_512_out = torchvision.transforms.Resize(size=(512, 512), interpolation=TF.InterpolationMode.BILINEAR, antialias=args.antialias)
 multisizes = [resize_256_img, resize_384_img, resize_640_img, resize_768_img, resize_896_img]
 
 # [0.5, 0.75, 1.0, 1.25, 1.5, 1.75]
@@ -86,7 +89,7 @@ def load_images(images_path, annotations_path):
 
         image = image.unsqueeze(dim=0).float().cuda()
         # Make the resize transform back to original resolution
-        resize_original = torchvision.transforms.Resize(size=(image.shape[-2], image.shape[-1]), interpolation=TF.InterpolationMode.BILINEAR)
+        resize_original = torchvision.transforms.Resize(size=(image.shape[-2], image.shape[-1]), interpolation=TF.InterpolationMode.BILINEAR, antialias=args.antialias)
 
         # Prep image for eval
         image = resize_512_img(image)
@@ -192,6 +195,5 @@ with torch.no_grad():
             output_name = filename.replace('.jpg', '.png')
             segmentation_image.save(os.path.join(args.save_dir, output_name))
             # Reopen the image and verify you get the same array
-            reopened_image = Image.open(os.path.join(args.save_dir, output_name))
-            reopened_image = np.array(reopened_image)
+            reopened_image = imageio.imread(os.path.join(args.save_dir, output_name))
             np.testing.assert_allclose(segmentation_image, reopened_image)
